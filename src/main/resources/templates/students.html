@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+	xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+<title>Students</title>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<style>
+body {
+	font-family: Arial;
+	margin: 20px;
+}
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-top: 20px;
+}
+
+th, td {
+	border: 1px solid #ddd;
+	padding: 8px;
+	text-align: left;
+}
+
+th {
+	background: #f2f2f2;
+}
+
+.header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+button {
+	padding: 8px 12px;
+	cursor: pointer;
+}
+
+.delete-btn {
+	background: #dc3545;
+	color: white;
+	border: none;
+}
+
+.add-btn {
+	background: #007bff;
+	color: white;
+	border: none;
+}
+
+.logout-btn {
+	background: #6c757d;
+	color: white;
+	border: none;
+}
+
+#addForm {
+	display: none;
+	margin: 20px 0;
+	padding: 15px;
+	border: 1px solid #ccc;
+}
+
+input {
+	margin: 5px;
+	padding: 5px;
+}
+</style>
+</head>
+<body>
+	<div class="header">
+		<h2>Student List</h2>
+		<div>
+			<span>Welcome, <b sec:authentication="name"></b> | Role: <b
+				sec:authentication="principal.authorities"></b></span>
+			<form th:action="@{/logout}" method="post" style="display: inline;">
+				<button type="submit" class="logout-btn">Logout</button>
+			</form>
+		</div>
+	</div>
+
+	<button class="add-btn" onclick="$('#addForm').toggle()"
+		sec:authorize="hasRole('ADMIN')">Add Student</button>
+
+	<div id="addForm" sec:authorize="hasRole('ADMIN')">
+		<input type="text" id="name" placeholder="Name"> <input
+			type="number" id="age" placeholder="Age"> <input type="text"
+			id="course" placeholder="Course"> <input type="email"
+			id="email" placeholder="Email">
+		<button onclick="addStudent()">Save</button>
+	</div>
+
+	<table id="studentTable">
+		<thead>
+			<tr>
+				<th>ID</th>
+				<th>Name</th>
+				<th>Age</th>
+				<th>Course</th>
+				<th>Email</th>
+				<th sec:authorize="hasRole('ADMIN')">Action</th>
+			</tr>
+		</thead>
+		<tbody></tbody>
+	</table>
+
+	<script>
+    function loadStudents() {
+        $.get("/api/students", function (data) {
+            let rows = '';
+            data.forEach(s => {
+                rows += `<tr>
+                    <td>${s.id}</td>
+                    <td>${s.name}</td>
+                    <td>${s.age}</td>
+                    <td>${s.course}</td>
+                    <td>${s.email}</td>
+                    <td sec:authorize="hasRole('ADMIN')"><button class="delete-btn" onclick="deleteStudent(${s.id})">Delete</button></td>
+                </tr>`;
+            });
+            $('#studentTable tbody').html(rows);
+        });
+    }
+
+    function addStudent() {
+        let student = {
+            name: $('#name').val(),
+            age: $('#age').val(),
+            course: $('#course').val(),
+            email: $('#email').val()
+        };
+        $.ajax({
+            url: '/api/students',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(student),
+            success: function() {
+                loadStudents();
+                $('#addForm input').val('');
+                $('#addForm').hide();
+            },
+            error: function() { alert('Error: Only ADMIN can add students'); }
+        });
+    }
+
+    function deleteStudent(id) {
+        if (confirm('Are you sure?')) {
+            $.ajax({
+                url: '/api/students/' + id,
+                type: 'DELETE',
+                success: loadStudents,
+                error: function() { alert('Error: Only ADMIN can delete'); }
+            });
+        }
+    }
+
+    $(document).ready(loadStudents);
+</script>
+</body>
+</html>
